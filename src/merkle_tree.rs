@@ -72,7 +72,7 @@ impl MerkleTree {
         node_index / 2
     }
 
-    pub fn new_from_hashed(input_elements: Vec<String>) -> Self {
+    fn new_from_hashed(input_elements: Vec<String>) -> Self {
         let mut nodes = vec!["".to_string() ; input_elements.len()];
         for elem in input_elements.iter() {
             nodes.push(elem.to_string());
