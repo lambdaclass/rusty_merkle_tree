@@ -5,16 +5,19 @@ use std::hash::{Hash, Hasher};
 // element count, parent, left child, right child access is implicit (check left_child_index,
 // right_child_index, parent_index implementations).
 pub struct MerkleTree {
-    nodes: Vec<String>,
+    pub nodes: Vec<String>,
     pub root_index: Option<usize>,
     size: usize,
 }
 
 impl MerkleTree {
-    fn hash_leaves<T>(input_elements: Vec<T>) -> Vec<String>
+    fn hash_leaves<T>(mut input_elements: Vec<T>) -> Vec<String>
     where
-        T: Hash,
+        T: Hash + std::clone::Clone,
     {
+        while !MerkleTree::is_power_of_two(input_elements.len()) {
+            input_elements.push(input_elements[input_elements.len() - 1].clone());
+        }
         let mut hashed_input_elements: Vec<String> = Vec::new();
         for element in input_elements.iter() {
             let mut hasher = DefaultHasher::new();
@@ -83,9 +86,13 @@ impl MerkleTree {
         merkle_tree
     }
 
+    fn is_power_of_two(x: usize) -> bool {
+        (x != 0) && ((x & (x - 1)) == 0)
+    }
+      
     pub fn new_from<T>(input_elements: Vec<T>) -> Self
     where
-        T: Hash,
+        T: Hash + std::clone::Clone,
     {
         let input_elements = MerkleTree::hash_leaves(input_elements);
         MerkleTree::new_from_hashed(input_elements)
