@@ -1,6 +1,5 @@
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
-use std::collections::HashMap;
 
 // Inner structure contains a binary tree stored in an array with double the size of the initial
 // element count, parent, left child, right child access is implicit (check left_child_index,
@@ -75,9 +74,7 @@ impl MerkleTree {
     {
         let input_elements = MerkleTree::hash_leaves(input_elements);
         let mut nodes = vec!["".to_string() ; input_elements.len()];
-        let mut leaf_indices = HashMap::new();
         for elem in input_elements.iter() {
-            leaf_indices.insert(elem.to_string(), nodes.len());
             nodes.push(elem.to_string());
             
         }
