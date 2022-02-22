@@ -5,15 +5,18 @@ use std::hash::{Hash, Hasher};
 // element count, parent, left child, right child access is implicit (check left_child_index,
 // right_child_index, parent_index implementations).
 pub struct MerkleTree {
-    nodes: Vec<String>,
+    pub nodes: Vec<String>,
     pub root_index: Option<usize>,
 }
 
 impl MerkleTree {
-    fn hash_leaves<T>(input_elements: Vec<T>) -> Vec<String>
+    fn hash_leaves<T>(mut input_elements: Vec<T>) -> Vec<String>
     where
-        T: Hash,
+        T: Hash + std::clone::Clone,
     {
+        while !MerkleTree::is_power_of_two(input_elements.len()) {
+            input_elements.push(input_elements[input_elements.len() - 1].clone());
+        }
         let mut hashed_input_elements: Vec<String> = Vec::new();
         let mut hasher = DefaultHasher::new();
         for element in input_elements.iter() {
@@ -70,8 +73,10 @@ impl MerkleTree {
 
     pub fn new_from<T>(input_elements: Vec<T>) -> Self
     where
-        T: Hash,
+        T: Hash + std::clone::Clone,
     {
+        // If the length od the input elements are not a power of 2, we clone the last element
+        // and add it to the end of the input elements.
         let input_elements = MerkleTree::hash_leaves(input_elements);
         let mut nodes = vec!["".to_string() ; input_elements.len()];
         for elem in input_elements.iter() {
@@ -83,6 +88,10 @@ impl MerkleTree {
         };
         merkle_tree.build(merkle_tree.root_index.unwrap());
         merkle_tree
+    }
+
+    fn is_power_of_two(x: usize) -> bool {
+        (x != 0) && ((x & (x - 1)) == 0)
     }
 
     pub fn get_root_hash(&self) -> String{
