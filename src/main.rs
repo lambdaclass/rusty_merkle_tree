@@ -21,9 +21,29 @@ impl MerkleTree {
         hashed_input_elements
     }
 
-    fn build(nodes: &mut Vec<String>, node_index: usize) {
-        MerkleTree::build(nodes, MerkleTree::left_child_index(node_index));
-        MerkleTree::build(nodes, MerkleTree::right_child_index(node_index));
+    fn build(&mut self, parent_index: usize) {
+        if self.is_leaf(parent_index) {
+            return;
+        }
+        let left_child_index = MerkleTree::left_child_index(parent_index);
+        let right_child_index = MerkleTree::left_child_index(parent_index);
+        self.build(left_child_index);
+        self.build(right_child_index);
+        self.nodes[parent_index] = self.hash_nodes(
+            self.nodes[left_child_index].clone(),
+            self.nodes[right_child_index].clone(),
+        );
+    }
+
+    fn hash_nodes(&self, left_child: String, right_child: String) -> String {
+        let mut hasher = DefaultHasher::new();
+        hasher.write(left_child.as_bytes());
+        hasher.write(right_child.as_bytes());
+        hasher.finish().to_string()
+    }
+
+    fn is_leaf(&self, node_index: usize) -> bool {
+        node_index <= self.nodes.len()
     }
 
     fn left_child_index(parent_index: usize) -> usize {
@@ -43,21 +63,13 @@ impl MerkleTree {
         for elem in input_elements.iter() {
             nodes.push(elem.to_string());
         }
+        let mut merkle_tree = MerkleTree {
+            nodes: nodes,
+            root_index: Some(1),
+        };
+        merkle_tree.build(merkle_tree.root_index.unwrap());
 
-        MerkleTree::build(&mut nodes, 1);
-        let mut input_elements = VecDeque::from(input_elements);
-        while input_elements.len() >= 2 {
-            let left_hash = input_elements.pop_front().unwrap();
-            let right_hash = input_elements.pop_front().unwrap();
-            nodes.push(left_hash.to_string());
-            nodes.push(right_hash.to_string());
-            input_elements.push_back(left_hash + &right_hash);
-        }
-
-        MerkleTree {
-            nodes: nodes.clone(),
-            root_index: Some(nodes.len() - 1),
-        }
+        merkle_tree
     }
 
     pub fn proof() {}
