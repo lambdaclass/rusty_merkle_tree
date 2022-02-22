@@ -1,5 +1,6 @@
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
+use std::collections::HashMap;
 
 // Inner structure contains a binary tree stored in an array with double the size of the initial
 // element count, parent, left child, right child access is implicit (check left_child_index,
@@ -74,8 +75,11 @@ impl MerkleTree {
     {
         let input_elements = MerkleTree::hash_leaves(input_elements);
         let mut nodes = vec!["".to_string() ; input_elements.len()];
+        let mut leaf_indices = HashMap::new();
         for elem in input_elements.iter() {
+            leaf_indices.insert(elem.to_string(), nodes.len());
             nodes.push(elem.to_string());
+            
         }
         let mut merkle_tree = MerkleTree {
             nodes,
@@ -89,6 +93,24 @@ impl MerkleTree {
         self.nodes[self.root_index.unwrap()].to_string()
     }
 
+    fn leaf_index_of(&self, elem: &String) -> Option<usize> {
+        for i in (self.nodes.len()/2)..self.nodes.len() {
+            if elem == &self.nodes[i] {
+                return Some(i - self.nodes.len() / 2);
+            }
+        }
+
+        None
+    }
+
+    pub fn proof_from_hash(&self, elem: String) -> Vec<String> {
+        if let Some(elem_index) = self.leaf_index_of(&elem) {
+            self.proof(elem_index)
+        } else {
+            Vec::new()
+        }
+    }
+
     pub fn proof(&self, elem_index: usize) -> Vec<String> {
         let mut current = elem_index + self.nodes.len() / 2;
         let mut proof = Vec::new();
@@ -99,9 +121,21 @@ impl MerkleTree {
         }
         proof
     }
+
 }
 
-pub fn verify(element: String, mut elem_index: usize, proof: Vec<String>, root_hash: String) -> bool {
+pub fn verify_tree_element(tree: &MerkleTree, element: String, proof: Vec<String>) -> bool {
+    let root_hash = tree.get_root_hash();
+    let elem_index = tree.leaf_index_of(&element);
+
+    if let Some(index) = elem_index {
+        verify(element, index, proof, root_hash)
+    } else {
+        false
+    }
+}
+
+fn verify(element: String, mut elem_index: usize, proof: Vec<String>, root_hash: String) -> bool {
     let mut hash = element;
     for elem in proof.iter() {
         if elem_index % 2 == 0 {
@@ -115,3 +149,4 @@ pub fn verify(element: String, mut elem_index: usize, proof: Vec<String>, root_h
 
     root_hash == hash
 }
+

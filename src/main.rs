@@ -1,5 +1,5 @@
 use merkle_tree::merkle_tree::MerkleTree;
-use merkle_tree::merkle_tree::verify;
+use merkle_tree::merkle_tree::verify_tree_element;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
@@ -9,5 +9,5 @@ fn main() {
     let mut hasher = DefaultHasher::new();
     "hey3".hash(&mut hasher);
     let hash = hasher.finish().to_string();
-    println!("{}", verify(hash, 0, proof_vec, merkle.get_root_hash()));
+    println!("{}", verify_tree_element(&merkle, hash, proof_vec));
 }
