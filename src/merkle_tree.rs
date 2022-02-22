@@ -68,11 +68,7 @@ impl MerkleTree {
         node_index / 2
     }
 
-    pub fn new_from<T>(input_elements: Vec<T>) -> Self
-    where
-        T: Hash,
-    {
-        let input_elements = MerkleTree::hash_leaves(input_elements);
+    pub fn new_from_hashed(input_elements: Vec<String>) -> Self {
         let mut nodes = vec!["".to_string() ; input_elements.len()];
         for elem in input_elements.iter() {
             nodes.push(elem.to_string());
@@ -83,6 +79,14 @@ impl MerkleTree {
         };
         merkle_tree.build(merkle_tree.root_index.unwrap());
         merkle_tree
+    }
+
+    pub fn new_from<T>(input_elements: Vec<T>) -> Self
+    where
+        T: Hash,
+    {
+        let input_elements = MerkleTree::hash_leaves(input_elements);
+        MerkleTree::new_from_hashed(input_elements)
     }
 
     pub fn get_root_hash(&self) -> String{
