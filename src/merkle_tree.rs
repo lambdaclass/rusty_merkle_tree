@@ -28,7 +28,7 @@ impl MerkleTree {
             return;
         }
         let left_child_index = MerkleTree::left_child_index(parent_index);
-        let right_child_index = MerkleTree::left_child_index(parent_index);
+        let right_child_index = MerkleTree::right_child_index(parent_index);
         self.build(left_child_index);
         self.build(right_child_index);
         self.nodes[parent_index] = MerkleTree::hash_nodes(
