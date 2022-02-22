@@ -15,8 +15,8 @@ impl MerkleTree {
         T: Hash,
     {
         let mut hashed_input_elements: Vec<String> = Vec::new();
-        let mut hasher = DefaultHasher::new();
         for element in input_elements.iter() {
+            let mut hasher = DefaultHasher::new();
             element.hash(&mut hasher);
             hashed_input_elements.push(hasher.finish().to_string());
         }
@@ -102,6 +102,22 @@ impl MerkleTree {
             current = MerkleTree::parent_index(current);
         }
         proof
+    }
+
+    pub fn add<T>(&self, element: &T) -> MerkleTree 
+        where T: Hash 
+    {
+        let mut hasher = DefaultHasher::new();
+        element.hash(&mut hasher);
+        self.add_hashed(hasher.finish().to_string())
+    }
+
+    pub fn add_hashed(&self, element: String) -> MerkleTree 
+    {
+        let mut leaves = Vec::from(&self.nodes[(self.nodes.len()/2 as usize).. self.nodes.len()]);
+        leaves.push(element);
+
+        MerkleTree::new_from_hashed(leaves)
     }
 }
 
