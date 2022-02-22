@@ -45,7 +45,7 @@ impl MerkleTree {
     }
 
     fn is_leaf(&self, node_index: usize) -> bool {
-        (node_index >= (self.nodes.len()/2)) && node_index < self.nodes.len()
+        (node_index >= (self.nodes.len() / 2)) && node_index < self.nodes.len()
     }
 
     fn left_child_index(parent_index: usize) -> usize {
@@ -64,7 +64,7 @@ impl MerkleTree {
         }
     }
 
-    fn parent_index(node_index) -> usize {
+    fn parent_index(node_index: usize) -> usize {
         node_index / 2
     }
 
@@ -78,7 +78,7 @@ impl MerkleTree {
             nodes.push(elem.to_string());
         }
         let mut merkle_tree = MerkleTree {
-            nodes: nodes,
+            nodes,
             root_index: Some(1),
         };
         merkle_tree.build(merkle_tree.root_index.unwrap());
@@ -87,11 +87,11 @@ impl MerkleTree {
     }
 
     pub fn proof(&self, elem_index: usize) -> Vec<String> {
-        let current = elem_index;
-        let proof = Vec::new();
+        let mut current = elem_index;
+        let mut proof = Vec::new();
         assert!(self.is_leaf(current));
         while current != self.root_index.unwrap() {
-            proof.push(self.nodes[MerkleTree::sibling_index(current)]);
+            proof.push(self.nodes[MerkleTree::sibling_index(current)].to_string());
             current = MerkleTree::parent_index(current);
         }
 
