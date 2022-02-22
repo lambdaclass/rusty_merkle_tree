@@ -7,6 +7,7 @@ use std::hash::{Hash, Hasher};
 pub struct MerkleTree {
     nodes: Vec<String>,
     pub root_index: Option<usize>,
+    size: usize,
 }
 
 impl MerkleTree {
@@ -15,8 +16,8 @@ impl MerkleTree {
         T: Hash,
     {
         let mut hashed_input_elements: Vec<String> = Vec::new();
-        let mut hasher = DefaultHasher::new();
         for element in input_elements.iter() {
+            let mut hasher = DefaultHasher::new();
             element.hash(&mut hasher);
             hashed_input_elements.push(hasher.finish().to_string());
         }
@@ -68,11 +69,7 @@ impl MerkleTree {
         node_index / 2
     }
 
-    pub fn new_from<T>(input_elements: Vec<T>) -> Self
-    where
-        T: Hash,
-    {
-        let input_elements = MerkleTree::hash_leaves(input_elements);
+    pub fn new_from_hashed(input_elements: Vec<String>) -> Self {
         let mut nodes = vec!["".to_string() ; input_elements.len()];
         for elem in input_elements.iter() {
             nodes.push(elem.to_string());
@@ -80,9 +77,18 @@ impl MerkleTree {
         let mut merkle_tree = MerkleTree {
             nodes,
             root_index: Some(1),
+            size: input_elements.len(),
         };
         merkle_tree.build(merkle_tree.root_index.unwrap());
         merkle_tree
+    }
+
+    pub fn new_from<T>(input_elements: Vec<T>) -> Self
+    where
+        T: Hash,
+    {
+        let input_elements = MerkleTree::hash_leaves(input_elements);
+        MerkleTree::new_from_hashed(input_elements)
     }
 
     pub fn get_root_hash(&self) -> String{
@@ -98,6 +104,23 @@ impl MerkleTree {
             current = MerkleTree::parent_index(current);
         }
         proof
+    }
+
+    pub fn add<T>(&self, element: &T) -> MerkleTree 
+        where T: Hash 
+    {
+        let mut hasher = DefaultHasher::new();
+        element.hash(&mut hasher);
+        self.add_hashed(hasher.finish().to_string())
+    }
+
+    pub fn add_hashed(&self, element: String) -> MerkleTree 
+    {
+        let leaves_start = self.nodes.len() / 2;
+        let mut leaves = Vec::from(&self.nodes[leaves_start as usize..(leaves_start as usize + self.size)]);
+        leaves.push(element);
+
+        MerkleTree::new_from_hashed(leaves)
     }
 }
 
