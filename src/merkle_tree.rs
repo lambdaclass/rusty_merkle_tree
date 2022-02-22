@@ -31,13 +31,13 @@ impl MerkleTree {
         let right_child_index = MerkleTree::left_child_index(parent_index);
         self.build(left_child_index);
         self.build(right_child_index);
-        self.nodes[parent_index] = self.hash_nodes(
+        self.nodes[parent_index] = MerkleTree::hash_nodes(
             self.nodes[left_child_index].clone(),
             self.nodes[right_child_index].clone(),
         );
     }
 
-    fn hash_nodes(&self, left_child: String, right_child: String) -> String {
+    fn hash_nodes(left_child: String, right_child: String) -> String {
         let mut hasher = DefaultHasher::new();
         hasher.write(left_child.as_bytes());
         hasher.write(right_child.as_bytes());
@@ -85,6 +85,10 @@ impl MerkleTree {
         merkle_tree
     }
 
+    pub fn get_root_hash(&self) -> String{
+        self.nodes[self.root_index.unwrap()].to_string()
+    }
+
     pub fn proof(&self, elem_index: usize) -> Vec<String> {
         let mut current = elem_index + self.nodes.len() / 2;
         let mut proof = Vec::new();
@@ -95,6 +99,19 @@ impl MerkleTree {
         }
         proof
     }
+}
 
-    pub fn verify() {}
+pub fn verify(element: String, mut elem_index: usize, proof: Vec<String>, root_hash: String) -> bool {
+    let mut hash = element;
+    for elem in proof.iter() {
+        if elem_index % 2 == 0 {
+            hash = MerkleTree::hash_nodes(hash, elem.to_string());
+        } else {
+            hash = MerkleTree::hash_nodes(elem.to_string(), hash);
+        }
+
+        elem_index /= 2;
+    }
+
+    root_hash == hash
 }
