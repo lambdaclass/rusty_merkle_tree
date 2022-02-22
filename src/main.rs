@@ -1,26 +1,16 @@
 use std::collections::hash_map::DefaultHasher;
-use std::collections::VecDeque;
 use std::hash::{Hash, Hasher};
 
+// Inner structure contains a binary tree stored in an array with double the size of the initial
+// element count, parent, left child, right child access is implicit (check left_child_index, 
+// right_child_index, parent_index implementations).
 struct MerkleTree {
-    pub nodes: Vec<MerkleTreeNode>,
+    nodes: Vec<String>,
     pub root_index: Option<usize>,
 }
 
-struct MerkleTreeNode {
-    pub hash: String,
-}
-
-impl Clone for MerkleTreeNode {
-    fn clone(&self) -> MerkleTreeNode {
-        MerkleTreeNode {
-            hash: self.hash.to_string(),
-        }
-    }
-}
-
 impl MerkleTree {
-    fn build_hashes<T>(input_elements: Vec<T>) -> Vec<String>
+    fn hash_leaves<T>(input_elements: Vec<T>) -> Vec<String>
     where
         T: Hash,
     {
@@ -33,9 +23,29 @@ impl MerkleTree {
         hashed_input_elements
     }
 
-    fn propagate_hashes(nodes: &mut Vec<MerkleTreeNode>, node_index: usize) {
-        MerkleTree::propagate_hashes(nodes, MerkleTree::left_child_index(node_index));
-        MerkleTree::propagate_hashes(nodes, MerkleTree::right_child_index(node_index));
+    fn build(&mut self, parent_index: usize) {
+        if self.is_leaf(parent_index) {
+            return;
+        }
+        let left_child_index = MerkleTree::left_child_index(parent_index);
+        let right_child_index = MerkleTree::left_child_index(parent_index);
+        self.build(left_child_index);
+        self.build(right_child_index);
+        self.nodes[parent_index] = self.hash_nodes(
+            self.nodes[left_child_index].clone(),
+            self.nodes[right_child_index].clone(),
+        );
+    }
+
+    fn hash_nodes(&self, left_child: String, right_child: String) -> String {
+        let mut hasher = DefaultHasher::new();
+        hasher.write(left_child.as_bytes());
+        hasher.write(right_child.as_bytes());
+        hasher.finish().to_string()
+    }
+
+    fn is_leaf(&self, node_index: usize) -> bool {
+        (node_index >= (self.nodes.len() / 2)) && node_index < self.nodes.len()
     }
 
     fn left_child_index(parent_index: usize) -> usize {
@@ -46,39 +56,47 @@ impl MerkleTree {
         parent_index * 2 + 1
     }
 
+    fn sibling_index(node_index: usize) -> usize {
+        if node_index % 2 == 0 {
+            node_index + 1
+        } else {
+            node_index - 1
+        }
+    }
+
+    fn parent_index(node_index: usize) -> usize {
+        node_index / 2
+    }
+
     pub fn new_from<T>(input_elements: Vec<T>) -> Self
     where
         T: Hash,
     {
-        let input_elements = MerkleTree::build_hashes(input_elements);
-        let mut nodes: Vec<MerkleTreeNode> = Vec::with_capacity(input_elements.len());
+        let input_elements = MerkleTree::hash_leaves(input_elements);
+        let mut nodes = Vec::with_capacity(input_elements.len());
         for elem in input_elements.iter() {
-            nodes.push(MerkleTreeNode {
-                hash: elem.to_string(),
-            });
+            nodes.push(elem.to_string());
         }
+        let mut merkle_tree = MerkleTree {
+            nodes,
+            root_index: Some(1),
+        };
+        merkle_tree.build(merkle_tree.root_index.unwrap());
 
-        MerkleTree::propagate_hashes(&mut nodes, 1);
-        let mut input_elements = VecDeque::from(input_elements);
-        while input_elements.len() >= 2 {
-            let left_hash = input_elements.pop_front().unwrap();
-            let right_hash = input_elements.pop_front().unwrap();
-            nodes.push(MerkleTreeNode {
-                hash: left_hash.to_string(),
-            });
-            nodes.push(MerkleTreeNode {
-                hash: right_hash.to_string(),
-            });
-            input_elements.push_back(left_hash + &right_hash);
-        }
-
-        MerkleTree {
-            nodes: nodes.clone(),
-            root_index: Some(nodes.len() - 1),
-        }
+        merkle_tree
     }
 
-    pub fn proof() {}
+    pub fn proof(&self, elem_index: usize) -> Vec<String> {
+        let mut current = elem_index;
+        let mut proof = Vec::new();
+        assert!(self.is_leaf(current));
+        while current != self.root_index.unwrap() {
+            proof.push(self.nodes[MerkleTree::sibling_index(current)].to_string());
+            current = MerkleTree::parent_index(current);
+        }
+
+        proof
+    }
 
     pub fn verify() {}
 }
