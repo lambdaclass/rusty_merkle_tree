@@ -1,8 +1,11 @@
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
+// Inner structure contains a binary tree stored in an array with double the size of the initial
+// element count, parent, left child, right child access is implicit (check left_child_index, 
+// right_child_index, parent_index implementations).
 struct MerkleTree {
-    pub nodes: Vec<String>,
+    nodes: Vec<String>,
     pub root_index: Option<usize>,
 }
 
