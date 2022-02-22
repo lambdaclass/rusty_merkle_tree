@@ -1,5 +1,4 @@
 use std::collections::hash_map::DefaultHasher;
-use std::collections::VecDeque;
 use std::hash::{Hash, Hasher};
 
 struct MerkleTree {
@@ -43,7 +42,7 @@ impl MerkleTree {
     }
 
     fn is_leaf(&self, node_index: usize) -> bool {
-        node_index <= self.nodes.len()
+        (node_index >= (self.nodes.len()/2)) && node_index < self.nodes.len()
     }
 
     fn left_child_index(parent_index: usize) -> usize {
@@ -52,6 +51,18 @@ impl MerkleTree {
 
     fn right_child_index(parent_index: usize) -> usize {
         parent_index * 2 + 1
+    }
+
+    fn sibling_index(node_index: usize) -> usize {
+        if node_index % 2 == 0 {
+            node_index + 1
+        } else {
+            node_index - 1
+        }
+    }
+
+    fn parent_index(node_index) -> usize {
+        node_index / 2
     }
 
     pub fn new_from<T>(input_elements: Vec<T>) -> Self
@@ -72,7 +83,17 @@ impl MerkleTree {
         merkle_tree
     }
 
-    pub fn proof() {}
+    pub fn proof(&self, elem_index: usize) -> Vec<String> {
+        let current = elem_index;
+        let proof = Vec::new();
+        assert!(self.is_leaf(current));
+        while current != self.root_index.unwrap() {
+            proof.push(self.nodes[MerkleTree::sibling_index(current)]);
+            current = MerkleTree::parent_index(current);
+        }
+
+        proof
+    }
 
     pub fn verify() {}
 }
