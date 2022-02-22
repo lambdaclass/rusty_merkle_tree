@@ -115,3 +115,32 @@ pub fn verify(element: String, mut elem_index: usize, proof: Vec<String>, root_h
 
     root_hash == hash
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test01_check_key_is_inside_tree() {
+        let merkle = MerkleTree::new_from(vec!("hey", "hey2"));
+        let mut hasher = DefaultHasher::new();
+        "hey".hash(&mut hasher);
+        let hash = hasher.finish().to_string();
+
+        let proof_vec = merkle.proof(0);
+
+        assert!(verify(hash, 0, proof_vec, merkle.get_root_hash()));
+    }
+
+    #[test]
+    fn test02_check_key_is_not_inside_tree() {
+        let merkle = MerkleTree::new_from(vec!("hey", "hey2"));
+        let mut hasher = DefaultHasher::new();
+        "hey3".hash(&mut hasher);
+        let hash = hasher.finish().to_string();
+
+        let proof_vec = merkle.proof(0);
+
+        assert!(!verify(hash, 0, proof_vec, merkle.get_root_hash()));
+    }
+}
