@@ -4,7 +4,7 @@ use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
 fn main() {
-    let merkle = MerkleTree::new_from(vec!("hey", "hey2"));
+    let mut merkle = MerkleTree::new_from(vec!("hey", "hey2"));
    
     let proof_vec = merkle.proof(0);
     let mut hasher = DefaultHasher::new();
@@ -29,5 +29,9 @@ fn main() {
     let hash = hasher.finish().to_string();
     let new_merkle = merkle.add_hashed(hash.clone());
     let proof_vec = new_merkle.proof(2);
+    println!("{}", new_merkle.size);
     println!("{}", verify(hash, 2, proof_vec, new_merkle.get_root_hash()));
+
+    let new_merkle = merkle.delete_element("hey".to_string());
+    println!("{}", new_merkle.size);
 }

@@ -5,9 +5,9 @@ use std::hash::{Hash, Hasher};
 // element count, parent, left child, right child access is implicit (check left_child_index,
 // right_child_index, parent_index implementations).
 pub struct MerkleTree {
-    pub nodes: Vec<String>,
+    nodes: Vec<String>,
     pub root_index: Option<usize>,
-    size: usize,
+    pub size: usize,
 }
 
 impl MerkleTree {
@@ -138,20 +138,21 @@ impl MerkleTree {
         leaves.push(element);
 
         MerkleTree::new_from_hashed(leaves)
-    pub fn delete_element(&self, element: T) -> MerkleTree 
+    }
+
+    pub fn delete_element<T>(&mut self, element: T) -> MerkleTree 
     where 
         T: Hash,
     {
         let mut hasher = DefaultHasher::new();
         element.hash(&mut hasher);
         let hash = hasher.finish().to_string();
-        if let Some(element_to_remove_index) = self.nodes.leaf_index_of(&hash) {
-            self.nodes.pop(element_to_remove_index);
+        if let Some(element_to_remove_index) = self.leaf_index_of(&hash) {
+            self.nodes.remove(element_to_remove_index);
         } else {
             println!("Element not present");
-            return self
         }
-        MerkleTree::new_from_hashed(self.nodes)
+        MerkleTree::new_from_hashed(self.nodes.to_vec())
     }
 }
 
