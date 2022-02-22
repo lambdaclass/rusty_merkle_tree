@@ -7,6 +7,7 @@ use std::hash::{Hash, Hasher};
 pub struct MerkleTree {
     nodes: Vec<String>,
     pub root_index: Option<usize>,
+    size: usize,
 }
 
 impl MerkleTree {
@@ -76,6 +77,7 @@ impl MerkleTree {
         let mut merkle_tree = MerkleTree {
             nodes,
             root_index: Some(1),
+            size: input_elements.len(),
         };
         merkle_tree.build(merkle_tree.root_index.unwrap());
         merkle_tree
@@ -114,7 +116,8 @@ impl MerkleTree {
 
     pub fn add_hashed(&self, element: String) -> MerkleTree 
     {
-        let mut leaves = Vec::from(&self.nodes[(self.nodes.len()/2 as usize).. self.nodes.len()]);
+        let leaves_start = self.nodes.len() / 2;
+        let mut leaves = Vec::from(&self.nodes[leaves_start as usize..(leaves_start as usize + self.size)]);
         leaves.push(element);
 
         MerkleTree::new_from_hashed(leaves)
