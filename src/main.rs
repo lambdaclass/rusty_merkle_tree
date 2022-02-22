@@ -8,7 +8,7 @@ struct MerkleTree {
 }
 
 impl MerkleTree {
-    fn build_hashes<T>(input_elements: Vec<T>) -> Vec<String>
+    fn hash_leaves<T>(input_elements: Vec<T>) -> Vec<String>
     where
         T: Hash,
     {
@@ -21,9 +21,9 @@ impl MerkleTree {
         hashed_input_elements
     }
 
-    fn propagate_hashes(nodes: &mut Vec<String>, node_index: usize) {
-        MerkleTree::propagate_hashes(nodes, MerkleTree::left_child_index(node_index));
-        MerkleTree::propagate_hashes(nodes, MerkleTree::right_child_index(node_index));
+    fn build(nodes: &mut Vec<String>, node_index: usize) {
+        MerkleTree::build(nodes, MerkleTree::left_child_index(node_index));
+        MerkleTree::build(nodes, MerkleTree::right_child_index(node_index));
     }
 
     fn left_child_index(parent_index: usize) -> usize {
@@ -38,13 +38,13 @@ impl MerkleTree {
     where
         T: Hash,
     {
-        let input_elements = MerkleTree::build_hashes(input_elements);
+        let input_elements = MerkleTree::hash_leaves(input_elements);
         let mut nodes = Vec::with_capacity(input_elements.len());
         for elem in input_elements.iter() {
             nodes.push(elem.to_string());
         }
 
-        MerkleTree::propagate_hashes(&mut nodes, 1);
+        MerkleTree::build(&mut nodes, 1);
         let mut input_elements = VecDeque::from(input_elements);
         while input_elements.len() >= 2 {
             let left_hash = input_elements.pop_front().unwrap();
