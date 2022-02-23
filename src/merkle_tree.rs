@@ -126,7 +126,7 @@ impl MerkleTree {
     pub fn get_root_hash(&self) -> String {
         self.nodes[self.root_index.unwrap()].to_string()
     }
-  
+
     /// returns the merkle proof for the element given its index in the leaves array. If the element is not present in the tree it will return an empty proof
     pub fn proof(&self, elem_index: usize) -> Vec<String> {
         let mut current = elem_index + self.nodes.len() / 2;
