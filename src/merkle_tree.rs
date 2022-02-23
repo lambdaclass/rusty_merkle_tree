@@ -123,7 +123,7 @@ impl MerkleTree {
         proof
     }
 
-    pub fn add<T>(&self, element: &T) -> MerkleTree 
+    pub fn add<T>(&self, element: T) -> MerkleTree 
         where T: Hash 
     {
         let mut hasher = DefaultHasher::new();
@@ -131,10 +131,15 @@ impl MerkleTree {
         self.add_hashed(hasher.finish().to_string())
     }
 
+    fn get_leaves(&self) -> Vec<String> {
+        let leaves_start = self.nodes.len() / 2;
+        let leaves = Vec::from(&self.nodes[leaves_start as usize..(leaves_start as usize + self.size)]);
+        leaves
+    }
+
     pub fn add_hashed(&self, element: String) -> MerkleTree 
     {
-        let leaves_start = self.nodes.len() / 2;
-        let mut leaves = Vec::from(&self.nodes[leaves_start as usize..(leaves_start as usize + self.size)]);
+        let mut leaves = self.get_leaves();
         leaves.push(element);
 
         MerkleTree::new_from_hashed(leaves)
@@ -149,10 +154,11 @@ impl MerkleTree {
         let hash = hasher.finish().to_string();
         if let Some(element_to_remove_index) = self.leaf_index_of(&hash) {
             self.nodes.remove(element_to_remove_index);
+            self.size -= 1;
         } else {
             println!("Element not present");
         }
-        MerkleTree::new_from_hashed(self.nodes.to_vec())
+        MerkleTree::new_from_hashed(self.get_leaves())
     }
 }
 
