@@ -7,20 +7,17 @@ use std::hash::{Hash, Hasher};
 pub struct MerkleTree {
     nodes: Vec<String>,
     pub root_index: Option<usize>,
-    pub size: usize,
+    size: usize,
 }
 
 impl MerkleTree {
     // Transforms the vector of elements (to be inserted in the tree) to their respective hashes.
     // It also ensures that the vector size is a power of 2 (if the original vector does not have
     // enough elements, it will end up filled with copies of the last element
-    fn hash_leaves<T>(mut input_elements: Vec<T>) -> Vec<String>
+    fn hash_leaves<T>(input_elements: Vec<T>) -> Vec<String>
     where
         T: Hash + std::clone::Clone,
     {
-        while !MerkleTree::is_power_of_two(input_elements.len()) {
-            input_elements.push(input_elements[input_elements.len() - 1].clone());
-        }
         let mut hashed_input_elements: Vec<String> = Vec::new();
         for element in input_elements.iter() {
             let mut hasher = DefaultHasher::new();
@@ -28,6 +25,15 @@ impl MerkleTree {
             hashed_input_elements.push(hasher.finish().to_string());
         }
         hashed_input_elements
+    }
+
+    fn complete_until_power_of_two(input_elements: Vec<String>) -> Vec<String> {
+        let mut power_of_two_elements = input_elements;
+        while !MerkleTree::is_power_of_two(power_of_two_elements.len()) {
+            power_of_two_elements
+                .push(power_of_two_elements[power_of_two_elements.len() - 1].clone());
+        }
+        power_of_two_elements
     }
 
     // recrusively computes the hash stored in the node given by parent_index by computing its
@@ -44,6 +50,18 @@ impl MerkleTree {
             self.nodes[left_child_index].clone(),
             self.nodes[right_child_index].clone(),
         );
+    }
+
+    pub fn nodes_count_equals(&self, size: u32) -> bool {
+        self.nodes.len() == size as usize
+    }
+
+    pub fn has_size(&self, size: u32) -> bool {
+        self.size as u32 == size
+    }
+
+    pub fn size_in_bytes(&self) -> usize {
+        std::mem::size_of_val(self) + (self.nodes.len() * std::mem::size_of::<String>())
     }
 
     fn hash_nodes(left_child: String, right_child: String) -> String {
@@ -78,14 +96,16 @@ impl MerkleTree {
     }
 
     fn new_from_hashed(input_elements: Vec<String>) -> Self {
-        let mut nodes = vec!["".to_string(); input_elements.len()];
-        for elem in input_elements.iter() {
+        let size = input_elements.len();
+        let leaves = MerkleTree::complete_until_power_of_two(input_elements);
+        let mut nodes = vec!["".to_string(); leaves.len()];
+        for elem in leaves.iter() {
             nodes.push(elem.to_string());
         }
         let mut merkle_tree = MerkleTree {
             nodes,
             root_index: Some(1),
-            size: input_elements.len(),
+            size,
         };
         merkle_tree.build(merkle_tree.root_index.unwrap());
         merkle_tree
@@ -105,17 +125,6 @@ impl MerkleTree {
 
     pub fn get_root_hash(&self) -> String {
         self.nodes[self.root_index.unwrap()].to_string()
-    }
-
-    // returns the index of the element (if present) in the leaves array
-    fn leaf_index_of(&self, elem: &String) -> Option<usize> {
-        for i in (self.nodes.len() / 2)..self.nodes.len() {
-            if elem == &self.nodes[i] {
-                return Some(i - self.nodes.len() / 2);
-            }
-        }
-
-        None
     }
 
     /// returns the merkle proof for the element given its index in the leaves array. If the element is not present in the tree it will return an empty proof
@@ -143,9 +152,7 @@ impl MerkleTree {
     /// creates a new merkle tree from the hash of a new index
     fn get_leaves(&self) -> Vec<String> {
         let leaves_start = self.nodes.len() / 2;
-        let leaves =
-            Vec::from(&self.nodes[leaves_start as usize..(leaves_start as usize + self.size)]);
-        leaves
+        Vec::from(&self.nodes[leaves_start as usize..(leaves_start as usize + self.size)])
     }
 
     pub fn add_hashed(&self, element: String) -> MerkleTree {
@@ -156,21 +163,23 @@ impl MerkleTree {
     }
 
     /// creates a new merkle tree from self with element removed
-    pub fn delete_element<T>(&mut self, element: T) -> Result<MerkleTree, String>
+    pub fn delete_element<T>(&self, element: T) -> Result<MerkleTree, String>
     where
         T: Hash,
     {
+        let mut leaves_of_the_actual_tree = self.get_leaves();
         let mut hasher = DefaultHasher::new();
         element.hash(&mut hasher);
         let hash = hasher.finish().to_string();
-        if let Some(element_to_remove_index) = self.leaf_index_of(&hash) {
-            self.nodes
-                .remove(element_to_remove_index + self.nodes.len() / 2);
-            self.size -= 1;
+        if let Some(element_to_remove_index) = leaves_of_the_actual_tree
+            .iter()
+            .position(|leaf_hash| *leaf_hash == hash)
+        {
+            leaves_of_the_actual_tree.remove(element_to_remove_index);
+            Ok(MerkleTree::new_from_hashed(leaves_of_the_actual_tree))
         } else {
-            return Err("Element not present".to_string());
+            Err("Element not present".to_string())
         }
-        Ok(MerkleTree::new_from_hashed(self.get_leaves()))
     }
 }
 
@@ -193,4 +202,155 @@ pub fn verify(
     }
 
     root_hash == hash
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test01_check_key_is_inside_tree() {
+        let merkle = MerkleTree::new_from(vec!["hey", "hey2"]);
+        let mut hasher = DefaultHasher::new();
+        "hey".hash(&mut hasher);
+        let hash = hasher.finish().to_string();
+
+        let proof_vec = merkle.proof(0);
+
+        assert!(verify(hash, 0, proof_vec, merkle.get_root_hash()));
+    }
+
+    #[test]
+    fn test02_check_key_is_not_inside_tree() {
+        let merkle = MerkleTree::new_from(vec!["hey", "hey2"]);
+        let mut hasher = DefaultHasher::new();
+        "hey3".hash(&mut hasher);
+        let hash = hasher.finish().to_string();
+
+        let proof_vec = merkle.proof(0);
+
+        assert!(!verify(hash, 0, proof_vec, merkle.get_root_hash()));
+    }
+
+    #[test]
+    fn test03_building_a_merkle_tree_out_of_a_vector_of_size_not_a_power_of_two_should_build_it_with_a_power_of_two_node_count(
+    ) {
+        // Given a non power of two input vector size
+        let input_elements = vec!["hey", "hey2", "hey3"];
+        let input_elements_size: u32 = input_elements.len() as u32;
+        let two: u32 = 2;
+        let expected_nodes_count = two.pow(input_elements_size);
+
+        // When building a Merkle tree with the input elements
+        let tree = MerkleTree::new_from(input_elements);
+
+        // Then the nodes count should be two to the power of the input elements count
+        assert_eq!(tree.nodes_count_equals(expected_nodes_count), true);
+    }
+
+    #[test]
+    fn test04_adding_an_element_to_a_two_to_the_power_of_k_elements_tree_should_duplicate_the_node_count(
+    ) {
+        let k: u32 = 3;
+        let two: u32 = 2;
+        let two_to_the_power_of_k = two.pow(k);
+        let expected_node_count_before_adding = 2 * two_to_the_power_of_k;
+        let expected_node_count_after_adding = 2 * expected_node_count_before_adding;
+        let input_elements = (0..two_to_the_power_of_k)
+            .map(|e| format!("{}", e))
+            .collect();
+
+        let tree = MerkleTree::new_from(input_elements);
+        let tree = tree.add("hey");
+
+        assert_eq!(tree.has_size(two_to_the_power_of_k + 1), true);
+        assert!(tree.nodes_count_equals(expected_node_count_after_adding));
+    }
+
+    #[test]
+    fn test05_deleting_an_element_to_a_two_to_the_power_of_k_elements_tree_should_maintain_the_node_count_and_reduce_the_tree_size(
+    ) {
+        let k: u32 = 3;
+        let two: u32 = 2;
+        let two_to_the_power_of_k = two.pow(k);
+        let expected_node_count_before_removing = 2 * two_to_the_power_of_k;
+        let expected_node_count_after_removing = expected_node_count_before_removing;
+        let input_elements = (0..two_to_the_power_of_k)
+            .map(|e| format!("{}", e))
+            .collect();
+
+        let tree = MerkleTree::new_from(input_elements);
+        let tree = tree
+            .delete_element(format!("{}", two_to_the_power_of_k - 1))
+            .unwrap();
+
+        assert_eq!(tree.has_size(two_to_the_power_of_k - 1), true);
+        assert!(tree.nodes_count_equals(expected_node_count_after_removing));
+    }
+
+    #[test]
+    fn test06_removing_an_element_to_a_two_to_the_power_of_k_plus_one_elements_tree_should_reduce_by_half_the_node_count(
+    ) {
+        let k: u32 = 3;
+        let two: u32 = 2;
+        let two_to_the_power_of_k_plus_one = two.pow(k) + 1;
+        let expected_node_count_before_removing = 4 * (two_to_the_power_of_k_plus_one - 1);
+        let expected_node_count_after_removing = expected_node_count_before_removing / 2;
+        let input_elements = (0..two_to_the_power_of_k_plus_one)
+            .map(|e| format!("{}", e))
+            .collect();
+
+        let tree = MerkleTree::new_from(input_elements);
+        let tree_deleted = tree
+            .delete_element(format!("{}", two_to_the_power_of_k_plus_one - 1))
+            .unwrap();
+
+        assert_eq!(
+            tree_deleted.has_size(two_to_the_power_of_k_plus_one - 1),
+            true
+        );
+        assert!(tree_deleted.nodes_count_equals(expected_node_count_after_removing));
+    }
+
+    #[test]
+    fn test07_adding_an_element_to_a_two_to_the_power_of_k_plus_one_elements_tree_should_maintain_the_node_count(
+    ) {
+        let k: u32 = 3;
+        let two: u32 = 2;
+        let two_to_the_power_of_k_plus_one = two.pow(k) + 1;
+        let expected_node_count_before_adding = 4 * (two_to_the_power_of_k_plus_one - 1);
+        let expected_node_count_after_adding = expected_node_count_before_adding;
+        let input_elements = (0..two_to_the_power_of_k_plus_one)
+            .map(|e| format!("{}", e))
+            .collect();
+
+        let tree = MerkleTree::new_from(input_elements);
+        let tree = tree.add(format!("{}", two_to_the_power_of_k_plus_one));
+
+        assert_eq!(tree.has_size(two_to_the_power_of_k_plus_one + 1), true);
+        assert!(tree.nodes_count_equals(expected_node_count_after_adding));
+    }
+
+    #[test]
+    fn test08_the_memory_space_occupied_grows_linearly() {
+        let k: u32 = 10;
+        let two: u32 = 2;
+        let two_to_the_power_of_k = two.pow(k);
+        let two_to_the_power_of_k_plus_one = two.pow(k + 1);
+        let k_input_elements = (0..two_to_the_power_of_k)
+            .map(|e| format!("{}", e))
+            .collect();
+        let k_plus_one_input_elements = (0..two_to_the_power_of_k_plus_one)
+            .map(|e| format!("{}", e))
+            .collect();
+
+        let k_tree = MerkleTree::new_from(k_input_elements);
+        let k_plus_one_tree = MerkleTree::new_from(k_plus_one_input_elements);
+
+        // std::mem::size_of_val(&k_tree) is subtracted because it is duplicated in the multiplication
+        assert_eq!(
+            (2 * k_tree.size_in_bytes()) - std::mem::size_of_val(&k_tree),
+            k_plus_one_tree.size_in_bytes()
+        );
+    }
 }
