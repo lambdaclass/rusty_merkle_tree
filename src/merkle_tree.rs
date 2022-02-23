@@ -145,7 +145,7 @@ impl MerkleTree {
         MerkleTree::new_from_hashed(leaves)
     }
 
-    pub fn delete_element<T>(&mut self, element: T) -> MerkleTree 
+    pub fn delete_element<T>(&mut self, element: T) -> Result<MerkleTree, String>
     where 
         T: Hash,
     {
@@ -156,9 +156,9 @@ impl MerkleTree {
             self.nodes.remove(element_to_remove_index);
             self.size -= 1;
         } else {
-            println!("Element not present");
+            return Err("Element not present".to_string());
         }
-        MerkleTree::new_from_hashed(self.get_leaves())
+        Ok(MerkleTree::new_from_hashed(self.get_leaves()))
     }
 }
 

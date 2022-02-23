@@ -8,6 +8,6 @@ fn main() {
     println!("Elementos antes de agregar: {}", merkle.size);
     let mut merkle_added = merkle.add("hey3".to_string());
     println!("Elementos despues de agregar: {}", merkle_added.size);
-    let merkle_deleted = merkle_added.delete_element("hey".to_string());
+    let merkle_deleted = merkle_added.delete_element("hey".to_string()).unwrap();
     println!("Elementos despues de quitar: {}", merkle_deleted.size);
 }
