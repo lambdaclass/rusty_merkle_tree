@@ -155,7 +155,7 @@ impl MerkleTree {
     }
 
     /// creates a new merkle tree from self with element removed
-    pub fn delete_element<T>(&mut self, element: T) -> MerkleTree 
+    pub fn delete_element<T>(&mut self, element: T) -> Result<MerkleTree, String>
     where 
         T: Hash,
     {
