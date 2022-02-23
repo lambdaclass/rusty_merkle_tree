@@ -78,7 +78,7 @@ impl MerkleTree {
     }
 
     fn new_from_hashed(input_elements: Vec<String>) -> Self {
-        let mut nodes = vec!["".to_string() ; input_elements.len()];
+        let mut nodes = vec!["".to_string(); input_elements.len()];
         for elem in input_elements.iter() {
             nodes.push(elem.to_string());
         }
@@ -94,7 +94,7 @@ impl MerkleTree {
     fn is_power_of_two(x: usize) -> bool {
         (x != 0) && ((x & (x - 1)) == 0)
     }
-      
+
     pub fn new_from<T>(input_elements: Vec<T>) -> Self
     where
         T: Hash + std::clone::Clone,
@@ -103,13 +103,13 @@ impl MerkleTree {
         MerkleTree::new_from_hashed(input_elements)
     }
 
-    pub fn get_root_hash(&self) -> String { 
+    pub fn get_root_hash(&self) -> String {
         self.nodes[self.root_index.unwrap()].to_string()
     }
 
     // returns the index of the element (if present) in the leaves array
     fn leaf_index_of(&self, elem: &String) -> Option<usize> {
-        for i in (self.nodes.len()/2)..self.nodes.len() {
+        for i in (self.nodes.len() / 2)..self.nodes.len() {
             if elem == &self.nodes[i] {
                 return Some(i - self.nodes.len() / 2);
             }
@@ -131,8 +131,9 @@ impl MerkleTree {
     }
 
     /// creates a new merkle tree with the element added
-    pub fn add<T>(&self, element: T) -> MerkleTree 
-        where T: Hash 
+    pub fn add<T>(&self, element: T) -> MerkleTree
+    where
+        T: Hash,
     {
         let mut hasher = DefaultHasher::new();
         element.hash(&mut hasher);
@@ -142,12 +143,12 @@ impl MerkleTree {
     /// creates a new merkle tree from the hash of a new index
     fn get_leaves(&self) -> Vec<String> {
         let leaves_start = self.nodes.len() / 2;
-        let leaves = Vec::from(&self.nodes[leaves_start as usize..(leaves_start as usize + self.size)]);
+        let leaves =
+            Vec::from(&self.nodes[leaves_start as usize..(leaves_start as usize + self.size)]);
         leaves
     }
 
-    pub fn add_hashed(&self, element: String) -> MerkleTree 
-    {
+    pub fn add_hashed(&self, element: String) -> MerkleTree {
         let mut leaves = self.get_leaves();
         leaves.push(element);
 
@@ -156,14 +157,15 @@ impl MerkleTree {
 
     /// creates a new merkle tree from self with element removed
     pub fn delete_element<T>(&mut self, element: T) -> Result<MerkleTree, String>
-    where 
+    where
         T: Hash,
     {
         let mut hasher = DefaultHasher::new();
         element.hash(&mut hasher);
         let hash = hasher.finish().to_string();
         if let Some(element_to_remove_index) = self.leaf_index_of(&hash) {
-            self.nodes.remove(element_to_remove_index + self.nodes.len() / 2);
+            self.nodes
+                .remove(element_to_remove_index + self.nodes.len() / 2);
             self.size -= 1;
         } else {
             return Err("Element not present".to_string());
@@ -173,7 +175,12 @@ impl MerkleTree {
 }
 
 /// Verifies a given merkle proof is valid.
-pub fn verify(element: String, mut elem_index: usize, proof: Vec<String>, root_hash: String) -> bool {
+pub fn verify(
+    element: String,
+    mut elem_index: usize,
+    proof: Vec<String>,
+    root_hash: String,
+) -> bool {
     let mut hash = element;
     for elem in proof.iter() {
         if elem_index % 2 == 0 {
