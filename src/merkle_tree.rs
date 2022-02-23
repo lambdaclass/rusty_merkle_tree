@@ -28,9 +28,10 @@ impl MerkleTree {
     }
 
     fn complete_until_power_of_two(input_elements: Vec<String>) -> Vec<String> {
-        let mut power_of_two_elements = input_elements.clone();
+        let mut power_of_two_elements = input_elements;
         while !MerkleTree::is_power_of_two(power_of_two_elements.len()) {
-            power_of_two_elements.push(power_of_two_elements[power_of_two_elements.len() - 1].clone());
+            power_of_two_elements
+                .push(power_of_two_elements[power_of_two_elements.len() - 1].clone());
         }
         power_of_two_elements
     }
@@ -104,7 +105,7 @@ impl MerkleTree {
         let mut merkle_tree = MerkleTree {
             nodes,
             root_index: Some(1),
-            size: size,
+            size,
         };
         merkle_tree.build(merkle_tree.root_index.unwrap());
         merkle_tree
@@ -124,17 +125,6 @@ impl MerkleTree {
 
     pub fn get_root_hash(&self) -> String {
         self.nodes[self.root_index.unwrap()].to_string()
-    }
-
-    // returns the index of the element (if present) in the leaves array
-    fn leaf_index_of(&self, elem: &str) -> Option<usize> {
-        for i in (self.nodes.len() / 2)..self.nodes.len() {
-            if elem == self.nodes[i] {
-                return Some(i - self.nodes.len() / 2);
-            }
-        }
-
-        None
     }
 
     /// returns the merkle proof for the element given its index in the leaves array. If the element is not present in the tree it will return an empty proof
@@ -173,21 +163,23 @@ impl MerkleTree {
     }
 
     /// creates a new merkle tree from self with element removed
-    pub fn delete_element<T>(&mut self, element: T) -> Result<MerkleTree, String>
+    pub fn delete_element<T>(&self, element: T) -> Result<MerkleTree, String>
     where
         T: Hash,
     {
+        let mut leaves_of_the_actual_tree = self.get_leaves();
         let mut hasher = DefaultHasher::new();
         element.hash(&mut hasher);
         let hash = hasher.finish().to_string();
-        if let Some(element_to_remove_index) = self.leaf_index_of(&hash) {
-            self.nodes
-                .remove(element_to_remove_index + self.nodes.len() / 2);
-            self.size -= 1;
+        if let Some(element_to_remove_index) = leaves_of_the_actual_tree
+            .iter()
+            .position(|leaf_hash| *leaf_hash == hash)
+        {
+            leaves_of_the_actual_tree.remove(element_to_remove_index);
+            Ok(MerkleTree::new_from_hashed(leaves_of_the_actual_tree))
         } else {
-            return Err("Element not present".to_string());
+            Err("Element not present".to_string())
         }
-        Ok(MerkleTree::new_from_hashed(self.get_leaves()))
     }
 }
 
@@ -287,8 +279,10 @@ mod test {
             .map(|e| format!("{}", e))
             .collect();
 
-        let mut tree = MerkleTree::new_from(input_elements);
-        let tree = tree.delete_element(format!("{}", two_to_the_power_of_k - 1)).unwrap();
+        let tree = MerkleTree::new_from(input_elements);
+        let tree = tree
+            .delete_element(format!("{}", two_to_the_power_of_k - 1))
+            .unwrap();
 
         assert_eq!(tree.has_size(two_to_the_power_of_k - 1), true);
         assert!(tree.nodes_count_equals(expected_node_count_after_removing));
@@ -306,11 +300,15 @@ mod test {
             .map(|e| format!("{}", e))
             .collect();
 
-        let mut tree = MerkleTree::new_from(input_elements);
-        let tree_deleted = tree.delete_element(format!("{}", two_to_the_power_of_k_plus_one - 1))
+        let tree = MerkleTree::new_from(input_elements);
+        let tree_deleted = tree
+            .delete_element(format!("{}", two_to_the_power_of_k_plus_one - 1))
             .unwrap();
 
-        assert_eq!(tree_deleted.has_size(two_to_the_power_of_k_plus_one - 1), true);
+        assert_eq!(
+            tree_deleted.has_size(two_to_the_power_of_k_plus_one - 1),
+            true
+        );
         assert!(tree_deleted.nodes_count_equals(expected_node_count_after_removing));
     }
 

@@ -9,4 +9,7 @@ edition = "2021"
 name = "merkle_tree"
 path = "src/lib.rs"
 
+[dev-dependencies]
+rusty-hook = "^0.11.2"
+
 [dependencies]
