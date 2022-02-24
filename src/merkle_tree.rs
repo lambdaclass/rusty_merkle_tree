@@ -111,6 +111,16 @@ impl MerkleTree {
         merkle_tree
     }
 
+    fn leaf_index_of(&self, elem: &str) -> Option<usize> {
+        for i in (self.nodes.len() / 2)..self.nodes.len() {
+            if elem == self.nodes[i] {
+                return Some(i - self.nodes.len() / 2);
+            }
+        }
+
+        None
+    }
+
     fn is_power_of_two(x: usize) -> bool {
         (x != 0) && ((x & (x - 1)) == 0)
     }
@@ -128,15 +138,29 @@ impl MerkleTree {
     }
 
     /// returns the merkle proof for the element given its index in the leaves array. If the element is not present in the tree it will return an empty proof
-    pub fn proof(&self, elem_index: usize) -> Vec<String> {
-        let mut current = elem_index + self.nodes.len() / 2;
-        let mut proof = Vec::new();
-        assert!(self.is_leaf(current));
-        while current != self.root_index.unwrap() {
-            proof.push(self.nodes[MerkleTree::sibling_index(current)].to_string());
-            current = MerkleTree::parent_index(current);
+    pub fn proof<T>(&self, element: T) -> Vec<String>
+    where
+        T: Hash,
+    {
+        let mut hasher = DefaultHasher::new();
+        element.hash(&mut hasher);
+        let hash = hasher.finish().to_string();
+        match self
+            .nodes
+            .iter()
+            .position(|hash_in_nodes| *hash_in_nodes == hash)
+        {
+            Some(mut current) => {
+                let mut proof = Vec::new();
+                assert!(self.is_leaf(current));
+                while current != self.root_index.unwrap() {
+                    proof.push(self.nodes[MerkleTree::sibling_index(current)].to_string());
+                    current = MerkleTree::parent_index(current);
+                }
+                proof
+            }
+            None => vec![],
         }
-        proof
     }
 
     /// creates a new merkle tree with the element added
@@ -184,24 +208,40 @@ impl MerkleTree {
 }
 
 /// Verifies a given merkle proof is valid.
-pub fn verify(
-    element: String,
+pub fn verify_tree_element<T>(tree: &MerkleTree, element: T, proof: Vec<String>) -> bool
+where
+    T: Hash,
+{
+    let mut hasher = DefaultHasher::new();
+    element.hash(&mut hasher);
+    let hashed_element = hasher.finish().to_string();
+    let root_hash = tree.get_root_hash();
+    let elem_index = tree.leaf_index_of(&hashed_element);
+
+    if let Some(index) = elem_index {
+        verify(hashed_element, index, proof, root_hash)
+    } else {
+        false
+    }
+}
+
+fn verify(
+    mut hashed_element: String,
     mut elem_index: usize,
     proof: Vec<String>,
     root_hash: String,
 ) -> bool {
-    let mut hash = element;
     for elem in proof.iter() {
         if elem_index % 2 == 0 {
-            hash = MerkleTree::hash_nodes(hash, elem.to_string());
+            hashed_element = MerkleTree::hash_nodes(hashed_element, elem.to_string());
         } else {
-            hash = MerkleTree::hash_nodes(elem.to_string(), hash);
+            hashed_element = MerkleTree::hash_nodes(elem.to_string(), hashed_element);
         }
 
         elem_index /= 2;
     }
 
-    root_hash == hash
+    root_hash == hashed_element
 }
 
 #[cfg(test)]
@@ -211,25 +251,15 @@ mod test {
     #[test]
     fn test01_check_key_is_inside_tree() {
         let merkle = MerkleTree::new_from(vec!["hey", "hey2"]);
-        let mut hasher = DefaultHasher::new();
-        "hey".hash(&mut hasher);
-        let hash = hasher.finish().to_string();
-
-        let proof_vec = merkle.proof(0);
-
-        assert!(verify(hash, 0, proof_vec, merkle.get_root_hash()));
+        let proof_vec = merkle.proof("hey".to_string());
+        assert!(verify_tree_element(&merkle, "hey".to_string(), proof_vec));
     }
 
     #[test]
     fn test02_check_key_is_not_inside_tree() {
         let merkle = MerkleTree::new_from(vec!["hey", "hey2"]);
-        let mut hasher = DefaultHasher::new();
-        "hey3".hash(&mut hasher);
-        let hash = hasher.finish().to_string();
-
-        let proof_vec = merkle.proof(0);
-
-        assert!(!verify(hash, 0, proof_vec, merkle.get_root_hash()));
+        let proof_vec = merkle.proof("hey3".to_string());
+        assert!(!verify_tree_element(&merkle, "hey3".to_string(), proof_vec));
     }
 
     #[test]
