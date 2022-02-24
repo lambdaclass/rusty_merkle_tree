@@ -112,13 +112,15 @@ impl MerkleTree {
     }
 
     fn leaf_index_of(&self, elem: &str) -> Option<usize> {
-        for i in (self.nodes.len() / 2)..self.nodes.len() {
-            if elem == self.nodes[i] {
-                return Some(i - self.nodes.len() / 2);
-            }
-        }
+        self.get_leaves()
+            .iter()
+            .position(|hashed_leaf| *hashed_leaf == elem)
+    }
 
-        None
+    fn node_index_of(&self, elem: &str) -> Option<usize> {
+        self.nodes
+            .iter()
+            .position(|hash_in_nodes| *hash_in_nodes == elem)
     }
 
     fn is_power_of_two(x: usize) -> bool {
@@ -145,11 +147,7 @@ impl MerkleTree {
         let mut hasher = DefaultHasher::new();
         element.hash(&mut hasher);
         let hash = hasher.finish().to_string();
-        match self
-            .nodes
-            .iter()
-            .position(|hash_in_nodes| *hash_in_nodes == hash)
-        {
+        match self.node_index_of(&hash) {
             Some(mut current) => {
                 let mut proof = Vec::new();
                 assert!(self.is_leaf(current));
@@ -195,10 +193,7 @@ impl MerkleTree {
         let mut hasher = DefaultHasher::new();
         element.hash(&mut hasher);
         let hash = hasher.finish().to_string();
-        if let Some(element_to_remove_index) = leaves_of_the_actual_tree
-            .iter()
-            .position(|leaf_hash| *leaf_hash == hash)
-        {
+        if let Some(element_to_remove_index) = self.leaf_index_of(&hash) {
             leaves_of_the_actual_tree.remove(element_to_remove_index);
             Ok(MerkleTree::new_from_hashed(leaves_of_the_actual_tree))
         } else {
