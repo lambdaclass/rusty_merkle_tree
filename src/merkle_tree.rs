@@ -139,7 +139,7 @@ impl MerkleTree {
         self.nodes[self.root_index.unwrap()].to_string()
     }
 
-    /// returns the merkle proof for the element given its index in the leaves array. If the element is not present in the tree it will return an empty proof
+    /// returns the merkle proof for the given element. If the element is not present in the tree it will return an empty proof
     pub fn proof<T>(&self, element: T) -> Vec<String>
     where
         T: Hash,
@@ -161,7 +161,7 @@ impl MerkleTree {
         }
     }
 
-    /// creates a new merkle tree with the element added
+    /// creates a new merkle tree with the added element
     pub fn add<T>(&self, element: T) -> MerkleTree
     where
         T: Hash,
@@ -171,7 +171,7 @@ impl MerkleTree {
         self.add_hashed(hasher.finish().to_string())
     }
 
-    /// creates a new merkle tree from the hash of a new index
+    /// obtain a vector with the leaves of the merkle tree
     fn get_leaves(&self) -> Vec<String> {
         let leaves_start = self.nodes.len() / 2;
         Vec::from(&self.nodes[leaves_start as usize..(leaves_start as usize + self.size)])
@@ -184,7 +184,7 @@ impl MerkleTree {
         MerkleTree::new_from_hashed(leaves)
     }
 
-    /// creates a new merkle tree from self with element removed
+    /// creates a new merkle tree without the value that was removed
     pub fn delete_element<T>(&self, element: T) -> Result<MerkleTree, String>
     where
         T: Hash,
