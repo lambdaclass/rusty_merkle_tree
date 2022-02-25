@@ -214,18 +214,17 @@ where
     let elem_index = tree.leaf_index_of(&hashed_element);
 
     if let Some(index) = elem_index {
-        verify(hashed_element, index, proof, root_hash)
+        verify(&hashed_element, index, proof, root_hash)
     } else {
         false
     }
 }
 
-fn verify(
-    mut hashed_element: String,
-    mut elem_index: usize,
-    proof: Vec<String>,
-    root_hash: String,
-) -> bool {
+fn verify(hashed_element: &str, elem_index: usize, proof: Vec<String>, root_hash: String) -> bool {
+    // create local mutable copies
+    let mut hashed_element = hashed_element.to_string();
+    let mut elem_index = elem_index;
+
     for elem in proof.iter() {
         if elem_index % 2 == 0 {
             hashed_element = MerkleTree::hash_nodes(hashed_element, elem.to_string());
