@@ -11,6 +11,102 @@ pub struct MerkleTree {
 }
 
 impl MerkleTree {
+    pub fn new_from<T>(input_elements: Vec<T>) -> Self
+    where
+        T: Hash + std::clone::Clone,
+    {
+        let input_elements = MerkleTree::hash_leaves(input_elements);
+        MerkleTree::new_from_hashed(input_elements)
+    }
+
+    // recrusively computes the hash stored in the node given by parent_index by computing its
+    // children hashes and then its corresponding hash
+    fn build(&mut self, parent_index: usize) {
+        if self.is_leaf(parent_index) {
+            return;
+        }
+        let left_child_index = MerkleTree::left_child_index(parent_index);
+        let right_child_index = MerkleTree::right_child_index(parent_index);
+        self.build(left_child_index);
+        self.build(right_child_index);
+        self.nodes[parent_index] = MerkleTree::hash_nodes(
+            self.nodes[left_child_index].clone(),
+            self.nodes[right_child_index].clone(),
+        );
+    }
+
+    /// returns the merkle proof for the given element. If the element is not present in the tree it will return an empty proof
+    pub fn proof<T>(&self, element: T) -> Vec<String>
+    where
+        T: Hash,
+    {
+        let mut hasher = DefaultHasher::new();
+        element.hash(&mut hasher);
+        let hash = hasher.finish().to_string();
+        match self.node_index_of(&hash) {
+            Some(mut current) => {
+                let mut proof = Vec::new();
+                assert!(self.is_leaf(current));
+                while current != self.root_index.unwrap() {
+                    proof.push(self.nodes[MerkleTree::sibling_index(current)].to_string());
+                    current = MerkleTree::parent_index(current);
+                }
+                proof
+            }
+            None => vec![],
+        }
+    }
+
+    /// creates a new merkle tree with the added element
+    pub fn add<T>(&self, element: T) -> MerkleTree
+    where
+        T: Hash,
+    {
+        let mut hasher = DefaultHasher::new();
+        element.hash(&mut hasher);
+        self.add_hashed(hasher.finish().to_string())
+    }
+
+    pub fn add_hashed(&self, element: String) -> MerkleTree {
+        let mut leaves = self.get_leaves();
+        leaves.push(element);
+
+        MerkleTree::new_from_hashed(leaves)
+    }
+
+    /// creates a new merkle tree without the value that was removed
+    pub fn delete_element<T>(&self, element: T) -> Result<MerkleTree, String>
+    where
+        T: Hash,
+    {
+        let mut leaves_of_the_actual_tree = self.get_leaves();
+        let mut hasher = DefaultHasher::new();
+        element.hash(&mut hasher);
+        let hash = hasher.finish().to_string();
+        if let Some(element_to_remove_index) = self.leaf_index_of(&hash) {
+            leaves_of_the_actual_tree.remove(element_to_remove_index);
+            Ok(MerkleTree::new_from_hashed(leaves_of_the_actual_tree))
+        } else {
+            Err("Element not present".to_string())
+        }
+    }
+
+    pub fn nodes_count_equals(&self, size: u32) -> bool {
+        self.nodes.len() == size as usize
+    }
+
+    pub fn has_size(&self, size: u32) -> bool {
+        self.size as u32 == size
+    }
+
+    pub fn size_in_bytes(&self) -> usize {
+        std::mem::size_of_val(self) + (self.nodes.len() * std::mem::size_of::<String>())
+    }
+
+    pub fn get_root_hash(&self) -> String {
+        self.nodes[self.root_index.unwrap()].to_string()
+    }
+
     // Transforms the vector of elements (to be inserted in the tree) to their respective hashes.
     // It also ensures that the vector size is a power of 2 (if the original vector does not have
     // enough elements, it will end up filled with copies of the last element
@@ -34,34 +130,6 @@ impl MerkleTree {
                 .push(power_of_two_elements[power_of_two_elements.len() - 1].clone());
         }
         power_of_two_elements
-    }
-
-    // recrusively computes the hash stored in the node given by parent_index by computing its
-    // children hashes and then its corresponding hash
-    fn build(&mut self, parent_index: usize) {
-        if self.is_leaf(parent_index) {
-            return;
-        }
-        let left_child_index = MerkleTree::left_child_index(parent_index);
-        let right_child_index = MerkleTree::right_child_index(parent_index);
-        self.build(left_child_index);
-        self.build(right_child_index);
-        self.nodes[parent_index] = MerkleTree::hash_nodes(
-            self.nodes[left_child_index].clone(),
-            self.nodes[right_child_index].clone(),
-        );
-    }
-
-    pub fn nodes_count_equals(&self, size: u32) -> bool {
-        self.nodes.len() == size as usize
-    }
-
-    pub fn has_size(&self, size: u32) -> bool {
-        self.size as u32 == size
-    }
-
-    pub fn size_in_bytes(&self) -> usize {
-        std::mem::size_of_val(self) + (self.nodes.len() * std::mem::size_of::<String>())
     }
 
     fn hash_nodes(left_child: String, right_child: String) -> String {
@@ -127,78 +195,10 @@ impl MerkleTree {
         (x != 0) && ((x & (x - 1)) == 0)
     }
 
-    pub fn new_from<T>(input_elements: Vec<T>) -> Self
-    where
-        T: Hash + std::clone::Clone,
-    {
-        let input_elements = MerkleTree::hash_leaves(input_elements);
-        MerkleTree::new_from_hashed(input_elements)
-    }
-
-    pub fn get_root_hash(&self) -> String {
-        self.nodes[self.root_index.unwrap()].to_string()
-    }
-
-    /// returns the merkle proof for the given element. If the element is not present in the tree it will return an empty proof
-    pub fn proof<T>(&self, element: T) -> Vec<String>
-    where
-        T: Hash,
-    {
-        let mut hasher = DefaultHasher::new();
-        element.hash(&mut hasher);
-        let hash = hasher.finish().to_string();
-        match self.node_index_of(&hash) {
-            Some(mut current) => {
-                let mut proof = Vec::new();
-                assert!(self.is_leaf(current));
-                while current != self.root_index.unwrap() {
-                    proof.push(self.nodes[MerkleTree::sibling_index(current)].to_string());
-                    current = MerkleTree::parent_index(current);
-                }
-                proof
-            }
-            None => vec![],
-        }
-    }
-
-    /// creates a new merkle tree with the added element
-    pub fn add<T>(&self, element: T) -> MerkleTree
-    where
-        T: Hash,
-    {
-        let mut hasher = DefaultHasher::new();
-        element.hash(&mut hasher);
-        self.add_hashed(hasher.finish().to_string())
-    }
-
     /// obtain a vector with the leaves of the merkle tree
     fn get_leaves(&self) -> Vec<String> {
         let leaves_start = self.nodes.len() / 2;
         Vec::from(&self.nodes[leaves_start as usize..(leaves_start as usize + self.size)])
-    }
-
-    pub fn add_hashed(&self, element: String) -> MerkleTree {
-        let mut leaves = self.get_leaves();
-        leaves.push(element);
-
-        MerkleTree::new_from_hashed(leaves)
-    }
-
-    /// creates a new merkle tree without the value that was removed
-    pub fn delete_element<T>(&self, element: T) -> Result<MerkleTree, String>
-    where
-        T: Hash,
-    {
-        let mut leaves_of_the_actual_tree = self.get_leaves();
-        let mut hasher = DefaultHasher::new();
-        element.hash(&mut hasher);
-        let hash = hasher.finish().to_string();
-        if let Some(element_to_remove_index) = self.leaf_index_of(&hash) {
-            leaves_of_the_actual_tree.remove(element_to_remove_index);
-            Ok(MerkleTree::new_from_hashed(leaves_of_the_actual_tree))
-        } else {
-            Err("Element not present".to_string())
-        }
     }
 }
 
