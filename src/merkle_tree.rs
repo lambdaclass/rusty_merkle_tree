@@ -75,7 +75,7 @@ impl MerkleTree {
     }
 
     /// creates a new merkle tree without the value that was removed
-    pub fn delete_element<T>(&self, element: T) -> Result<MerkleTree, String>
+    pub fn remove<T>(&self, element: T) -> Result<MerkleTree, String>
     where
         T: Hash,
     {
@@ -305,7 +305,7 @@ mod test {
 
         let tree = MerkleTree::new_from(input_elements);
         let tree = tree
-            .delete_element(format!("{}", two_to_the_power_of_k - 1))
+            .remove(format!("{}", two_to_the_power_of_k - 1))
             .unwrap();
 
         assert_eq!(tree.has_size(two_to_the_power_of_k - 1), true);
@@ -326,7 +326,7 @@ mod test {
 
         let tree = MerkleTree::new_from(input_elements);
         let tree_deleted = tree
-            .delete_element(format!("{}", two_to_the_power_of_k_plus_one - 1))
+            .remove(format!("{}", two_to_the_power_of_k_plus_one - 1))
             .unwrap();
 
         assert_eq!(
